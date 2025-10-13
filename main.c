@@ -8,6 +8,9 @@
 #include <math.h>
 #include <time.h>
 
+#define USE_ASCII 1
+#define SHOW_LABELS 0
+
 #define MIN(x, y) (x < y ? x : y)
 #define RAND(min, max) (rand() % (max - min) + min)
 #define PRINTLN(...) { printf(__VA_ARGS__); printf("\n"); }
@@ -171,13 +174,17 @@ int is_bust(Deck deck) {
 void display(int show_hole) {
   printf("\033[H\033[2J");
 
-  if (dhand.size == 2 && !show_hole) PRINTLN("dealer's hand (%d + ?):", MIN(dhand.cards[0].rank + 1, 10))
-  else PRINTLN("dealer's hand (%s%d):", is_soft(dhand) ? "soft " : "", hand_points(dhand, 1))
-  print_deck_ascii(dhand, show_hole ? ~0 : 1);
+  if (SHOW_LABELS) {
+    if (dhand.size == 2 && !show_hole) PRINTLN("dealer's hand (%d + ?):", MIN(dhand.cards[0].rank + 1, 10))
+    else PRINTLN("dealer's hand (%s%d):", is_soft(dhand) ? "soft " : "", hand_points(dhand, 1))
+  }
+  if (USE_ASCII) print_deck_ascii(dhand, show_hole ? ~0 : 1);
+  else print_deck(dhand, show_hole ? ~0 : 1);
   PRINTLN("");
 
-  PRINTLN("your hand (%s%d):", is_soft(phand) ? "soft " : "", hand_points(phand, 1))
-  print_deck_ascii(phand, ~0);
+  if (SHOW_LABELS) PRINTLN("your hand (%s%d):", is_soft(phand) ? "soft " : "", hand_points(phand, 1))
+  if (USE_ASCII) print_deck_ascii(phand, ~0);
+  else print_deck(phand, ~0);
   PRINTLN("");
 }
 
@@ -195,11 +202,11 @@ void players_turn() {
 
 void dealers_turn() {
   display(1);
-  msleep(500);
+  msleep(1000);
   while (hand_points(dhand, 1) < 17) {
     move_card(&shoe, &dhand);
     display(1);
-    msleep(500);
+    msleep(1000);
   }
 }
 
@@ -222,6 +229,7 @@ void game() {
   msleep(500);
   move_card(&shoe, &phand);
   display(0);
+  msleep(500);
 
   players_turn();
   if (!is_blackjack(phand) && !is_bust(phand)) dealers_turn();
