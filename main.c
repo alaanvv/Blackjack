@@ -56,7 +56,7 @@ typedef struct {
 } Deck;
 
 const c8 *ranks[] = { "Ace", "2", "3",  "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
-const c8 *suits[] = { "spades", "hearts", "diamonds", "clubs" };
+const c8 *suits[] = { "spades", "clubs", "diamonds", "hearts" };
 const c8 *ranks_ascii[] = { "A ", "2 ", "3 ",  "4 ", "5 ", "6 ", "7 ", "8 ", "9 ", "10", "J ", "Q ", "K " };
 const c8 *_ranks_ascii[] = { " A", " 2", " 3",  " 4", " 5", " 6", " 7", " 8", " 9", "10", " J", " Q", " K" };
 const c8 *suits_ascii[] = { "♠", "♣", "❤", "♦" };
