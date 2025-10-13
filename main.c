@@ -231,11 +231,13 @@ void game() {
   display(0);
   msleep(500);
 
-  players_turn();
+  if (!is_blackjack(dhand) && !is_bust(dhand)) players_turn();
+  else display(1);
   if (!is_blackjack(phand) && !is_bust(phand)) dealers_turn();
   else display(1);
 
-  if (is_blackjack(phand)) PRINTLN(BOLD GREEN "blackjack!" RESET)
+  if (is_blackjack(phand) && is_blackjack(phand)) PRINTLN(BOLD MAGENTA "blackjack push" RESET)
+  else if (is_blackjack(phand)) PRINTLN(BOLD GREEN "blackjack!" RESET)
   else if (is_bust(dhand)) PRINTLN(BOLD GREEN "dealer busted!" RESET)
   else if (is_bust(phand)) PRINTLN(BOLD RED "you busted..." RESET)
   else if (is_blackjack(dhand)) PRINTLN(BOLD RED "dealer blackjacked..." RESET)
