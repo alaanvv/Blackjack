@@ -1,7 +1,13 @@
+<div align="center">
+
 # Blackjack
+
+<img width="80%" src="https://github.com/alaanvv/Image-Database/blob/main/Misc/blackjack.png?raw=true">]
 
 Blackjack game made on C using POSIX features  
 and ASCII arts  
+
+</div>
 
 ---
 
