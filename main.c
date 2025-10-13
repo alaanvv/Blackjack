@@ -68,7 +68,6 @@ void flush_read(c8* c);
 void msleep(u16 time);
 u32 read_c();
 
-
 // ---
 
 void print_card(Card card, u8 face_mask) {
