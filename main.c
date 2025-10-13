@@ -1,3 +1,4 @@
+#include <string.h>
 #include <termios.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -45,8 +46,10 @@ typedef struct {
   u8 size;
 } Deck;
 
-const c8 *ranks[] = {"Ace", "2", "3",  "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"};
-const c8 *suits[] = {"spades", "hearts", "diamonds", "clubs"};
+const c8 *ranks[] = { "Ace", "2", "3",  "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
+const c8 *suits[] = { "spades", "hearts", "diamonds", "clubs" };
+const c8 *ranks_ascii[] = { "A ", "2 ", "3 ",  "4 ", "5 ", "6 ", "7 ", "8 ", "9 ", "10", "J ", "Q ", "K " };
+const c8 *suits_ascii[] = { "♠ ", "♥ ", "♦ ", "♣ " };
 
 int is_soft(Deck deck);
 void flush_read(c8* c);
@@ -61,6 +64,37 @@ void print_card(Card card, u8 face_mask) {
 void print_deck(Deck deck, i64 face_mask) {
   for (int i = 0; i < deck.size; i++)
     print_card(deck.cards[i], (i64) pow(2, i) & face_mask);
+}
+
+void print_deck_ascii(Deck deck, i64 face_mask) {
+  char ascii[7][128] = { 0 };
+
+  char buffer[32];
+  for (int i = 0; i < deck.size; i++) {
+    if (!((i64) pow(2, i) & face_mask)) {
+      strcat(ascii[0], "┌───────┐");
+      strcat(ascii[1], "│░░░░░░░│");
+      strcat(ascii[2], "│░░░░░░░│");
+      strcat(ascii[3], "│░░░░░░░│");
+      strcat(ascii[4], "│░░░░░░░│");
+      strcat(ascii[5], "│░░░░░░░│");
+      strcat(ascii[6], "└───────┘");
+      continue;
+    }
+    strcat(ascii[0], "┌───────┐");
+    sprintf(buffer,  "│%s     │", ranks_ascii[deck.cards[i].rank]);
+    strcat(ascii[1], buffer);
+    strcat(ascii[2], "│       │");
+    sprintf(buffer,  "│   %s  │", suits_ascii[deck.cards[i].suit]);
+    strcat(ascii[3], buffer);
+    strcat(ascii[4], "│       │");
+    sprintf(buffer,  "│     %s│", ranks_ascii[deck.cards[i].rank]);
+    strcat(ascii[5], buffer);
+    strcat(ascii[6], "└───────┘");
+  }
+
+  for (int i = 0; i < 7; i++)
+    printf("%s\n", ascii[i]);
 }
 
 void fill_deck(Deck* deck) {
@@ -133,11 +167,11 @@ void display(int show_hole) {
 
   if (dhand.size == 2 && !show_hole) PRINTLN("Dealer's hand (%d + ?):", MIN(dhand.cards[0].rank + 1, 10))
   else PRINTLN("Dealer's hand (%s%d):", is_soft(dhand) ? "soft " : "", hand_points(dhand, 1))
-  print_deck(dhand, show_hole ? ~0 : 1);
+  print_deck_ascii(dhand, show_hole ? ~0 : 1);
   PRINTLN("");
 
   PRINTLN("Your hand (%s%d):", is_soft(phand) ? "soft " : "", hand_points(phand, 1))
-  print_deck(phand, ~0);
+  print_deck_ascii(phand, ~0);
   PRINTLN("");
 }
 
