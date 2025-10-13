@@ -14,6 +14,7 @@
 
 #define RED   "\033[31m"
 #define GREEN "\033[32m"
+#define BLUE  "\033[34m"
 #define BOLD  "\033[1m"
 #define RESET "\033[0m"
 
@@ -34,7 +35,7 @@ c8 c;
 
 typedef enum { ACE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING } Rank;
 
-typedef enum { SPADES, HEARTS, DIAMONDS, CLUBS } Suit;
+typedef enum { SPADES, CLUBS, HEARTS, DIAMONDS } Suit;
 
 typedef struct {
   Rank rank;
@@ -49,10 +50,12 @@ typedef struct {
 const c8 *ranks[] = { "Ace", "2", "3",  "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
 const c8 *suits[] = { "spades", "hearts", "diamonds", "clubs" };
 const c8 *ranks_ascii[] = { "A ", "2 ", "3 ",  "4 ", "5 ", "6 ", "7 ", "8 ", "9 ", "10", "J ", "Q ", "K " };
-const c8 *suits_ascii[] = { "♠ ", "♥ ", "♦ ", "♣ " };
+const c8 *_ranks_ascii[] = { " A", " 2", " 3",  " 4", " 5", " 6", " 7", " 8", " 9", "10", " J", " Q", " K" };
+const c8 *suits_ascii[] = { "♠", "♣", "❤", "♦" };
 
 int is_soft(Deck deck);
 void flush_read(c8* c);
+void msleep(u16 time);
 
 // ---
 
@@ -72,25 +75,26 @@ void print_deck_ascii(Deck deck, i64 face_mask) {
   char buffer[32];
   for (int i = 0; i < deck.size; i++) {
     if (!((i64) pow(2, i) & face_mask)) {
-      strcat(ascii[0], "┌───────┐");
-      strcat(ascii[1], "│░░░░░░░│");
-      strcat(ascii[2], "│░░░░░░░│");
-      strcat(ascii[3], "│░░░░░░░│");
-      strcat(ascii[4], "│░░░░░░░│");
-      strcat(ascii[5], "│░░░░░░░│");
-      strcat(ascii[6], "└───────┘");
+      strcat(ascii[0], BOLD "┌───────┐");
+      strcat(ascii[1], BOLD "│" BLUE "+.~*+.~" RESET BOLD "│");
+      strcat(ascii[2], BOLD "│" BLUE "*+.~*+." RESET BOLD "│");
+      strcat(ascii[3], BOLD "│" BLUE "~*+.~*+" RESET BOLD "│");
+      strcat(ascii[4], BOLD "│" BLUE ".~*+.~*" RESET BOLD "│");
+      strcat(ascii[5], BOLD "│" BLUE "+.~*+.~" RESET BOLD "│");
+      strcat(ascii[6], BOLD "└───────┘" RESET);
       continue;
     }
-    strcat(ascii[0], "┌───────┐");
-    sprintf(buffer,  "│%s     │", ranks_ascii[deck.cards[i].rank]);
+
+    strcat(ascii[0], BOLD "┌───────┐");
+    sprintf(buffer,  "│ %s%s%s    │", deck.cards[i].suit >= HEARTS ? RED : "", ranks_ascii[deck.cards[i].rank], RESET);
     strcat(ascii[1], buffer);
-    strcat(ascii[2], "│       │");
-    sprintf(buffer,  "│   %s  │", suits_ascii[deck.cards[i].suit]);
+    strcat(ascii[2], BOLD "│       │");
+    sprintf(buffer,  "│   %s%s%s   │", deck.cards[i].suit >= HEARTS ? RED : "", suits_ascii[deck.cards[i].suit], RESET);
     strcat(ascii[3], buffer);
-    strcat(ascii[4], "│       │");
-    sprintf(buffer,  "│     %s│", ranks_ascii[deck.cards[i].rank]);
+    strcat(ascii[4], BOLD "│       │");
+    sprintf(buffer,  "│    %s%s%s │", deck.cards[i].suit >= HEARTS ? RED : "", _ranks_ascii[deck.cards[i].rank], RESET);
     strcat(ascii[5], buffer);
-    strcat(ascii[6], "└───────┘");
+    strcat(ascii[6], BOLD "└───────┘" RESET);
   }
 
   for (int i = 0; i < 7; i++)
@@ -189,11 +193,11 @@ void players_turn() {
 
 void dealers_turn() {
   display(1);
-  sleep(1);
+  msleep(500);
   while (hand_points(dhand, 1) < 17) {
     move_card(&shoe, &dhand);
     display(1);
-    sleep(1);
+    msleep(500);
   }
 }
 
@@ -204,26 +208,27 @@ void game() {
   shuffle_deck(&shoe);
 
   display(0);
-  sleep(1);
+  msleep(500);
   move_card(&shoe, &dhand);
   display(0);
-  sleep(1);
+  msleep(500);
   move_card(&shoe, &dhand);
   display(0);
-  sleep(1);
+  msleep(500);
   move_card(&shoe, &phand);
   display(0);
-  sleep(1);
+  msleep(500);
   move_card(&shoe, &phand);
   display(0);
 
   players_turn();
   if (!is_blackjack(phand) && !is_bust(phand)) dealers_turn();
+  else display(1);
 
   if (is_blackjack(phand)) PRINTLN(BOLD GREEN "Blackjack!" RESET)
-  else if (is_blackjack(dhand)) PRINTLN(BOLD RED "Dealer blackjacked..." RESET)
   else if (is_bust(dhand)) PRINTLN(BOLD GREEN "Dealer busted!" RESET)
   else if (is_bust(phand)) PRINTLN(BOLD RED "You busted..." RESET)
+  else if (is_blackjack(dhand)) PRINTLN(BOLD RED "Dealer blackjacked..." RESET)
   else if (is_21(phand) && is_soft(phand)) PRINTLN(BOLD GREEN "Soft win!" RESET)
   else if (is_21(dhand) && is_soft(dhand)) PRINTLN(BOLD RED "Dealer soft wins..." RESET)
   else if (is_21(phand)) PRINTLN(BOLD GREEN "You got 21!" RESET)
@@ -255,6 +260,10 @@ void flush_read(c8* c) {
   while (read(0, c, 1) > 0);
   fcntl(0, F_SETFL, flags);
   read(0, c, 1);
+}
+
+void msleep(u16 time) {
+  usleep(time * 1e3);
 }
 
 // ---
