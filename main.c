@@ -231,16 +231,16 @@ void game() {
   display(0);
   msleep(500);
 
-  if (!is_blackjack(dhand) && !is_bust(dhand)) players_turn();
+  if (!is_blackjack(dhand)) players_turn();
   else display(1);
   if (!is_blackjack(phand) && !is_bust(phand)) dealers_turn();
   else display(1);
 
-  if (is_blackjack(phand) && is_blackjack(phand)) PRINTLN(BOLD MAGENTA "blackjack push" RESET)
+  if (is_blackjack(phand) && is_blackjack(dhand)) PRINTLN(BOLD MAGENTA "blackjack push" RESET)
   else if (is_blackjack(phand)) PRINTLN(BOLD GREEN "blackjack!" RESET)
+  else if (is_blackjack(dhand)) PRINTLN(BOLD RED "dealer blackjacked..." RESET)
   else if (is_bust(dhand)) PRINTLN(BOLD GREEN "dealer busted!" RESET)
   else if (is_bust(phand)) PRINTLN(BOLD RED "you busted..." RESET)
-  else if (is_blackjack(dhand)) PRINTLN(BOLD RED "dealer blackjacked..." RESET)
   else if (is_21(phand) && is_soft(phand)) PRINTLN(BOLD GREEN "soft win!" RESET)
   else if (is_21(dhand) && is_soft(dhand)) PRINTLN(BOLD RED "dealer soft wins..." RESET)
   else if (is_21(phand)) PRINTLN(BOLD GREEN "you got 21!" RESET)
