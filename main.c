@@ -9,6 +9,7 @@
 #include <time.h>
 
 #define USE_ASCII 1
+#define BET_CHIPS 1
 #define SHOW_LABELS 0
 
 #define MAX(x, y) (x > y ? x : y)
@@ -199,10 +200,10 @@ void display(int show_hole) {
 void players_turn() {
   while (!is_bust(player) && !is_blackjack(player)) {
     display(0);
-    PRINTLN((player.size == 2 && bet <= total_chips / 2) ? "hit, stand or double down?" : "hit or stand?")
+    PRINTLN((BET_CHIPS && player.size == 2 && bet <= total_chips / 2) ? "hit, stand or double down?" : "hit or stand?")
     flush_read(&c);
 
-    if (c == 'd' && player.size == 2 && bet <= total_chips / 2) { 
+    if (BET_CHIPS && c == 'd' && player.size == 2 && bet <= total_chips / 2) { 
       bet *= 2;
       PRINTLN("betting %d", bet);
       move_card(&shoe, &player); 
@@ -228,15 +229,17 @@ void dealers_turn() {
 void game() {
   printf("\033[H\033[2J");
 
-  total_chips = MAX(1, read_c());
-  if (total_chips > 1) {
-    PRINTLN(BOLD "you have %d casino chips" RESET, total_chips);
-    printf("place your bets -> ");
-    scan("%d", &bet);
+  if (BET_CHIPS) {
+    total_chips = MAX(1, read_c());
+    if (total_chips > 1) {
+      PRINTLN(BOLD "you have %d casino chips" RESET, total_chips);
+      printf("place your bets -> ");
+      scan("%d", &bet);
+    }
+    bet = MAX(1, MIN(total_chips, bet));
+    PRINTLN("betting %d", bet);
+    msleep(500);
   }
-  bet = MAX(1, MIN(total_chips, bet));
-  PRINTLN("betting %d", bet)
-  msleep(500);
 
   empty_deck(&player);
   empty_deck(&dealer);
@@ -277,8 +280,10 @@ void game() {
   else if (hand_points(dealer, 1) > hand_points(player, 1)) { PRINTLN(BOLD RED "dealer wins..." RESET); res = -1; }
   else { PRINTLN(BOLD MAGENTA "tie." RESET); res = 0; }
 
-  total_chips += bet * res;
-  write_c(total_chips);
+  if (BET_CHIPS) {
+    total_chips += bet * res;
+    write_c(total_chips);
+  }
 }
 
 // ---
