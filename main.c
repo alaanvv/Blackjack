@@ -11,9 +11,12 @@
 #define USE_ASCII 1
 #define SHOW_LABELS 0
 
+#define MAX(x, y) (x > y ? x : y)
 #define MIN(x, y) (x < y ? x : y)
 #define RAND(min, max) (rand() % (max - min) + min)
+#define PRINT(...) { printf(__VA_ARGS__); printf("\n"); }
 #define PRINTLN(...) { printf(__VA_ARGS__); printf("\n"); }
+#define ASSERT(x, ...) if (!(x)) { PRINT(__VA_ARGS__); exit(1); }
 
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -57,9 +60,13 @@ const c8 *ranks_ascii[] = { "A ", "2 ", "3 ",  "4 ", "5 ", "6 ", "7 ", "8 ", "9 
 const c8 *_ranks_ascii[] = { " A", " 2", " 3",  " 4", " 5", " 6", " 7", " 8", " 9", "10", " J", " Q", " K" };
 const c8 *suits_ascii[] = { "♠", "♣", "❤", "♦" };
 
+void scan(const char *fmt, void *arg);
+void write_c(u32 value);
 int is_soft(Deck deck);
 void flush_read(c8* c);
 void msleep(u16 time);
+u32 read_c();
+
 
 // ---
 
@@ -133,7 +140,8 @@ int move_card(Deck* from, Deck* to) {
 
 // ---
 
-Deck shoe, phand, dhand;
+Deck shoe, player, dealer;
+u32 bet, total_chips;
 
 int has_ace(Deck deck) {
   for (int i = 0; i < deck.size; i++)
@@ -175,26 +183,33 @@ void display(int show_hole) {
   printf("\033[H\033[2J");
 
   if (SHOW_LABELS) {
-    if (dhand.size == 2 && !show_hole) PRINTLN("dealer's hand (%d + ?):", MIN(dhand.cards[0].rank + 1, 10))
-    else PRINTLN("dealer's hand (%s%d):", is_soft(dhand) ? "soft " : "", hand_points(dhand, 1))
+    if (dealer.size == 2 && !show_hole) PRINTLN("dealer's hand (%d + ?):", MIN(dealer.cards[0].rank + 1, 10))
+    else PRINTLN("dealer's hand (%s%d):", is_soft(dealer) ? "soft " : "", hand_points(dealer, 1))
   }
-  if (USE_ASCII) print_deck_ascii(dhand, show_hole ? ~0 : 1);
-  else print_deck(dhand, show_hole ? ~0 : 1);
+  if (USE_ASCII) print_deck_ascii(dealer, show_hole ? ~0 : 1);
+  else print_deck(dealer, show_hole ? ~0 : 1);
   PRINTLN("");
 
-  if (SHOW_LABELS) PRINTLN("your hand (%s%d):", is_soft(phand) ? "soft " : "", hand_points(phand, 1))
-  if (USE_ASCII) print_deck_ascii(phand, ~0);
-  else print_deck(phand, ~0);
+  if (SHOW_LABELS) PRINTLN("your hand (%s%d):", is_soft(player) ? "soft " : "", hand_points(player, 1))
+  if (USE_ASCII) print_deck_ascii(player, ~0);
+  else print_deck(player, ~0);
   PRINTLN("");
 }
 
 void players_turn() {
-  while (!is_bust(phand) && !is_blackjack(phand)) {
+  while (!is_bust(player) && !is_blackjack(player)) {
     display(0);
-    PRINTLN("hit or stand?")
+    PRINTLN((player.size == 2 && bet <= total_chips / 2) ? "hit, stand or double down?" : "hit or stand?")
     flush_read(&c);
 
-    if (c == 'h') { move_card(&shoe, &phand); display(0); }
+    if (c == 'd' && player.size == 2 && bet <= total_chips / 2) { 
+      bet *= 2;
+      PRINTLN("betting %d", bet);
+      move_card(&shoe, &player); 
+      display(0); 
+      break;
+    }
+    if (c == 'h') { move_card(&shoe, &player); display(0); }
     if (c == 's') break;
     if (c == 27) exit(0);
   }
@@ -203,51 +218,67 @@ void players_turn() {
 void dealers_turn() {
   display(1);
   msleep(1000);
-  while (hand_points(dhand, 1) < 17) {
-    move_card(&shoe, &dhand);
+  while (hand_points(dealer, 1) < 17) {
+    move_card(&shoe, &dealer);
     display(1);
     msleep(1000);
   }
 }
 
 void game() {
-  empty_deck(&phand);
-  empty_deck(&dhand);
+  printf("\033[H\033[2J");
+
+  total_chips = MAX(1, read_c());
+  if (total_chips > 1) {
+    PRINTLN(BOLD "you have %d casino chips" RESET, total_chips);
+    printf("place your bets -> ");
+    scan("%d", &bet);
+  }
+  bet = MAX(1, MIN(total_chips, bet));
+  PRINTLN("betting %d", bet)
+  msleep(500);
+
+  empty_deck(&player);
+  empty_deck(&dealer);
   fill_deck(&shoe);
   shuffle_deck(&shoe);
 
   display(0);
   msleep(500);
-  move_card(&shoe, &dhand);
+  move_card(&shoe, &dealer);
   display(0);
   msleep(500);
-  move_card(&shoe, &dhand);
+  move_card(&shoe, &dealer);
   display(0);
   msleep(500);
-  move_card(&shoe, &phand);
+  move_card(&shoe, &player);
   display(0);
   msleep(500);
-  move_card(&shoe, &phand);
+  move_card(&shoe, &player);
   display(0);
   msleep(500);
 
-  if (!is_blackjack(dhand)) players_turn();
+  if (!is_blackjack(dealer)) players_turn();
   else display(1);
-  if (!is_blackjack(phand) && !is_bust(phand)) dealers_turn();
+  if (!is_blackjack(player) && !is_bust(player)) dealers_turn();
   else display(1);
 
-  if (is_blackjack(phand) && is_blackjack(dhand)) PRINTLN(BOLD MAGENTA "blackjack push" RESET)
-  else if (is_blackjack(phand)) PRINTLN(BOLD GREEN "blackjack!" RESET)
-  else if (is_blackjack(dhand)) PRINTLN(BOLD RED "dealer blackjacked..." RESET)
-  else if (is_bust(dhand)) PRINTLN(BOLD GREEN "dealer busted!" RESET)
-  else if (is_bust(phand)) PRINTLN(BOLD RED "you busted..." RESET)
-  else if (is_21(phand) && is_soft(phand)) PRINTLN(BOLD GREEN "soft win!" RESET)
-  else if (is_21(dhand) && is_soft(dhand)) PRINTLN(BOLD RED "dealer soft wins..." RESET)
-  else if (is_21(phand)) PRINTLN(BOLD GREEN "you got 21!" RESET)
-  else if (is_21(dhand)) PRINTLN(BOLD RED "dealer got 21..." RESET)
-  else if (hand_points(phand, 1) > hand_points(dhand, 1)) PRINTLN(BOLD GREEN "you win..." RESET)
-  else if (hand_points(dhand, 1) > hand_points(phand, 1)) PRINTLN(BOLD RED "dealer wins..." RESET)
-  else PRINTLN(BOLD MAGENTA "tie." RESET)
+  i8 res;
+  if (is_blackjack(player) && is_blackjack(dealer)) { PRINTLN(BOLD MAGENTA "blackjack push" RESET); res = 0; }
+  else if (is_blackjack(player)) { PRINTLN(BOLD GREEN "blackjack!" RESET); res = 1; }
+  else if (is_blackjack(dealer)) { PRINTLN(BOLD RED "dealer blackjacked..." RESET); res = -1; }
+  else if (is_bust(dealer)) { PRINTLN(BOLD GREEN "dealer busted!" RESET); res = 1; }
+  else if (is_bust(player)) { PRINTLN(BOLD RED "you busted..." RESET); res = -1; }
+  else if (is_21(player) && is_soft(player)) { PRINTLN(BOLD GREEN "soft win!" RESET); res = 1; }
+  else if (is_21(dealer) && is_soft(dealer)) { PRINTLN(BOLD RED "dealer soft wins..." RESET); res = -1; }
+  else if (is_21(player)) { PRINTLN(BOLD GREEN "you got 21!" RESET); res = 1; }
+  else if (is_21(dealer)) { PRINTLN(BOLD RED "dealer got 21..." RESET); res = -1; }
+  else if (hand_points(player, 1) > hand_points(dealer, 1)) { PRINTLN(BOLD GREEN "you win!" RESET); res = 1; }
+  else if (hand_points(dealer, 1) > hand_points(player, 1)) { PRINTLN(BOLD RED "dealer wins..." RESET); res = -1; }
+  else { PRINTLN(BOLD MAGENTA "tie." RESET); res = 0; }
+
+  total_chips += bet * res;
+  write_c(total_chips);
 }
 
 // ---
@@ -263,7 +294,6 @@ void init_terminal() {
   struct termios t = t_old;
   t.c_lflag &= ~(ICANON | ECHO);
   tcsetattr(0, 0, &t);
-  atexit(restore_terminal);
 }
 
 void flush_read(c8* c) {
@@ -274,8 +304,38 @@ void flush_read(c8* c) {
   read(0, c, 1);
 }
 
+void scan(const char *fmt, void *arg) {
+  int flags = fcntl(0, F_GETFL, 0);
+  fcntl(0, F_SETFL, flags | O_NONBLOCK);
+  while (read(0, &c, 1) > 0);
+  fcntl(0, F_SETFL, flags);
+  struct termios t;
+  tcgetattr(0, &t);
+  struct termios t_block = t;
+  t_block.c_lflag |= (ICANON | ECHO);
+  tcsetattr(0, TCSANOW, &t_block);
+  scanf(fmt, arg);
+  tcsetattr(0, TCSANOW, &t);
+}
+
 void msleep(u16 time) {
   usleep(time * 1e3);
+}
+
+void write_c(u32 value) {
+  FILE* f = fopen("data", "wb");
+  ASSERT(f, "cant open coins file")
+  fwrite(&value, sizeof(u32), 1, f);
+  fclose(f);
+}
+
+u32 read_c() {
+  u32 value = 0;
+  FILE* f = fopen("data", "rb");
+  if (!f) return 0;
+  fread(&value, sizeof(u32), 1, f);
+  fclose(f);
+  return value;
 }
 
 // ---
@@ -283,5 +343,6 @@ void msleep(u16 time) {
 int main() {
   srand(time(0));
   init_terminal();
+  atexit(restore_terminal);
   do { game(); flush_read(&c); } while (c != 27);
 }
